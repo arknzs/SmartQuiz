@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps.voter'
+    'apps.voter',
+    'easy_thumbnails',
 ]
 
 MIDDLEWARE = [
@@ -116,5 +117,13 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
+DATA_DIR = (BASE_DIR/'../data').resolve()
 
 STATIC_URL = 'static/'
+MEDIA_URL = 'media/'
+
+MEDIA_ROOT = DATA_DIR/'media'
+STATICFILES_DIRS = [
+    BASE_DIR/'static'
+]
+STATIC_ROOT = DATA_DIR/'static'
