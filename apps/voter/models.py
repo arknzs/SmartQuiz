@@ -2,6 +2,7 @@ from django.db import models
 from easy_thumbnails.fields import ThumbnailerImageField
 
 class Voter(models.Model):
+    id = models.AutoField(primary_key=True)
     answer = models.JSONField(default=dict)
 
     def __str__(self):
