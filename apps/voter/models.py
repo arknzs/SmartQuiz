@@ -4,16 +4,24 @@ from easy_thumbnails.fields import ThumbnailerImageField
 
 class Style(models.Model):
     name = models.CharField(max_length=100)
-    style_kf = models.FloatField()
+    style_kf = models.FloatField(default=0)
 
-class RoomType(models.Model):
+    def __str__(self):
+        return self.name
+
+class Room(models.Model):
     name = models.CharField(max_length=100)
-    base_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='price for 1m')
+
+    def __str__(self):
+        return self.name
 
 
 class Zone(models.Model):
     name = models.CharField(max_length=100)
-    zone_kf = models.FloatField()
+    zone_kf = models.FloatField(default=0)
+
+    def __str__(self):
+        return self.name
 
 
 class Voter(models.Model):
@@ -28,9 +36,9 @@ class Voter(models.Model):
 
 class Product(models.Model):
     name = models.CharField(max_length=100)
-    price_at_square = models.DecimalField(max_digits=10, decimal_places=2)
+    price_at_square = models.DecimalField(max_digits=10, decimal_places=2, default=15000)
     zone = models.ForeignKey(Zone, on_delete=models.CASCADE, blank=True, null=True)
-    room_type = models.ForeignKey(RoomType, on_delete=models.CASCADE, blank=True, null=True)
+    room_type = models.ForeignKey(Room, on_delete=models.CASCADE, blank=True, null=True)
     style = models.ForeignKey(Style, on_delete=models.CASCADE, blank=True, null=True)
 
 
