@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz_name }}</title>
+    <meta name="description" content="{{ quiz_description }}">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="stylesheet" href="{% static 'voter/quiz.css' %}">
+</head>
+<body>
+    <main class="page-shell">
+        <div class="page-glow page-glow-left"></div>
+        <div class="page-glow page-glow-right"></div>
+
+        <section
+            class="quiz-app"
+            data-submit-url="{% url 'api_submit_quiz' %}"
+            aria-label="Смарт-квиз по дизайн-проекту"
+        >
+            <header class="quiz-topbar">
+                <div>
+                    <p class="quiz-kicker">Smart Quiz</p>
+                    <h1 class="quiz-title">{{ quiz_name }}</h1>
+                    <p class="quiz-description">{{ quiz_description }}</p>
+                </div>
+
+                <div class="quiz-progress-panel" aria-live="polite">
+                    <div class="quiz-progress-labels">
+                        <span id="quiz-step-label">Шаг 1 из 6</span>
+                        <span id="quiz-progress-value">17%</span>
+                    </div>
+                    <div class="quiz-progress-bar" aria-hidden="true">
+                        <div id="quiz-progress-fill" class="quiz-progress-fill"></div>
+                    </div>
+                </div>
+            </header>
+
+            <section class="quiz-card">
+                <div id="quiz-alert" class="quiz-alert" hidden></div>
+                <div id="quiz-stage" class="quiz-stage" aria-live="polite"></div>
+
+                <footer id="quiz-footer" class="quiz-footer">
+                    <button id="quiz-back" type="button" class="quiz-nav quiz-nav-secondary">
+                        <span aria-hidden="true">‹</span>
+                        <span>Назад</span>
+                    </button>
+
+                    <button id="quiz-next" type="button" class="quiz-nav quiz-nav-primary">
+                        <span id="quiz-next-label">Далее</span>
+                        <span aria-hidden="true">›</span>
+                    </button>
+                </footer>
+            </section>
+        </section>
+    </main>
+
+    {{ quiz_config|json_script:"quiz-config" }}
+    <script src="{% static 'voter/quiz.js' %}"></script>
+</body>
+</html>

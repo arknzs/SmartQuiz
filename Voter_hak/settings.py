@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-$-x$k)jnp+qj#59n0l$2zut2r&h3h)==fz=5p*32d$s@fb93%d
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
 
 
 # Application definition
@@ -39,8 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'apps.voter',
-    'easy_thumbnails',
 ]
+
+try:
+    import easy_thumbnails  # noqa: F401
+except ModuleNotFoundError:
+    easy_thumbnails = None
+else:
+    INSTALLED_APPS.append('easy_thumbnails')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
