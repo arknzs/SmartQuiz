@@ -16,7 +16,7 @@ class Style(models.Model):
 
 class Room(models.Model):
     name = models.CharField(max_length=101)
-
+    base_price = models.IntegerField(default=0)
     def __str__(self):
         return self.name
 

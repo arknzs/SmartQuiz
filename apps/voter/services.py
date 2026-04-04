@@ -20,10 +20,7 @@ def computed_sum(products):
     return total
 
 
-def computed_total(area, zone, rooms, style):
-    total = 0
-    for room in rooms:
-        room_price = room.base_price * zone.zone_kf
-        room_price = room_price * area
-        total += room_price * style.style_kf
+def computed_total(area, zone_kf, style_kf, base_price):
+    total = base_price * area * zone_kf * style_kf
     return total
+
