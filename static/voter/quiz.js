@@ -6,13 +6,15 @@
 
     const config = JSON.parse(configNode.textContent);
     const totalSteps = 6;
-    const storageKey = "smart-quiz-state-v1";
+    const storageKey = "smart-quiz-state-v2";
+    const storageVersion = 2;
     const submitUrl = document.querySelector(".quiz-app")?.dataset.submitUrl || "";
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
 
     const elements = {
         stage: document.getElementById("quiz-stage"),
         footer: document.getElementById("quiz-footer"),
+        progressPanel: document.querySelector(".quiz-progress-panel"),
         back: document.getElementById("quiz-back"),
         next: document.getElementById("quiz-next"),
         nextLabel: document.getElementById("quiz-next-label"),
@@ -23,7 +25,8 @@
     };
 
     const defaultState = {
-        step: 1,
+        step: 0,
+        intro_seen: false,
         room_type: "",
         zones: [],
         area: Number(config.area?.default || 60),
@@ -119,12 +122,15 @@
     function hydrateState() {
         try {
             const saved = JSON.parse(sessionStorage.getItem(storageKey) || "{}");
+            if (saved.__version !== storageVersion) {
+                return { ...defaultState };
+            }
             return {
                 ...defaultState,
                 ...saved,
                 zones: Array.isArray(saved.zones) ? saved.zones : [],
-                step: clampStep(saved.step || 1),
-                area: Number(saved.area || defaultState.area),
+                step: clampStep(saved.step ?? defaultState.step),
+                area: Number(saved.area ?? defaultState.area),
             };
         } catch (error) {
             return { ...defaultState };
@@ -132,11 +138,17 @@
     }
 
     function persistState() {
-        sessionStorage.setItem(storageKey, JSON.stringify(state));
+        sessionStorage.setItem(
+            storageKey,
+            JSON.stringify({
+                ...state,
+                __version: storageVersion,
+            }),
+        );
     }
 
     function clampStep(step) {
-        return Math.max(1, Math.min(totalSteps + 1, Number(step) || 1));
+        return Math.max(0, Math.min(totalSteps + 1, Number(step) || 0));
     }
 
     function render(direction) {
@@ -144,8 +156,26 @@
         renderAlert();
 
         if (state.success) {
+            elements.progressPanel.classList.remove("is-hidden");
             elements.footer.classList.add("is-hidden");
             renderSuccess();
+            return;
+        }
+
+        const isIntro = state.step === 0;
+        elements.progressPanel.classList.toggle("is-hidden", isIntro);
+        elements.footer.classList.toggle("is-hidden", isIntro);
+
+        if (isIntro) {
+            const introWrapper = document.createElement("div");
+            introWrapper.className = `quiz-step ${direction === "backward" ? "is-backward" : ""} ${direction === "none" ? "is-visible is-static" : ""}`;
+            introWrapper.innerHTML = getStepMarkup(state.step);
+            elements.stage.replaceChildren(introWrapper);
+            bindStepEvents();
+
+            if (direction !== "none") {
+                requestAnimationFrame(() => introWrapper.classList.add("is-visible"));
+            }
             return;
         }
 
@@ -167,6 +197,12 @@
     }
 
     function updateProgress() {
+        if (state.step === 0) {
+            elements.stepLabel.textContent = "Введение";
+            elements.progressValue.textContent = "0%";
+            elements.progressFill.style.width = "0%";
+            return;
+        }
         const visibleStep = state.success ? totalSteps : state.step;
         const percent = Math.round((visibleStep / totalSteps) * 100);
         elements.stepLabel.textContent = state.success ? "Заявка отправлена" : `Шаг ${visibleStep} из ${totalSteps}`;
@@ -213,7 +249,7 @@
     }
 
     function handleBack() {
-        if (state.step === 1 || isSubmitting) {
+        if (state.step <= 1 || isSubmitting) {
             return;
         }
 
@@ -278,6 +314,9 @@
     }
 
     function canProceed() {
+        if (state.step === 0) {
+            return false;
+        }
         if (state.step === 1) {
             return Boolean(state.room_type);
         }
@@ -297,6 +336,16 @@
     }
 
     function bindStepEvents() {
+        const startButton = elements.stage.querySelector("[data-start-quiz]");
+        if (startButton) {
+            startButton.addEventListener("click", () => {
+                state.step = 1;
+                state.intro_seen = true;
+                persistState();
+                render("forward");
+            });
+        }
+
         elements.stage.querySelectorAll("[data-room]").forEach((button) => {
             button.addEventListener("click", () => {
                 state.room_type = button.dataset.room;
@@ -462,6 +511,62 @@
     }
 
     function getStepMarkup(step) {
+        if (step === 0) {
+            return `
+                <section class="quiz-intro">
+                    <div class="quiz-intro-copy">
+                        <p class="quiz-intro-kicker">Дизайн-проект помещения</p>
+                        <h2 class="quiz-intro-title">${escapeHtml(config.title)}</h2>
+                        <p class="quiz-intro-text">
+                            Спасибо, что выбираете нашу компанию. Мы поможем подобрать интерьер вашей мечты,
+                            соберем ключевые пожелания и предложим направление, которое подойдет именно вам.
+                        </p>
+                        <div class="quiz-intro-points">
+                            <div class="quiz-intro-point">
+                                <span class="quiz-intro-point-icon">${icon("spark")}</span>
+                                <div>
+                                    <strong>6 понятных шагов</strong>
+                                    <span>Быстрый бриф без лишней нагрузки.</span>
+                                </div>
+                            </div>
+                            <div class="quiz-intro-point">
+                                <span class="quiz-intro-point-icon">${icon("grid")}</span>
+                                <div>
+                                    <strong>Подбор под ваш запрос</strong>
+                                    <span>Учтем помещение, зоны, площадь, стиль и бюджет.</span>
+                                </div>
+                            </div>
+                            <div class="quiz-intro-point">
+                                <span class="quiz-intro-point-icon">${icon("check")}</span>
+                                <div>
+                                    <strong>Быстрый старт общения</strong>
+                                    <span>После отправки мы выйдем на связь с уже понятным брифом.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="quiz-nav quiz-nav-primary quiz-intro-button" data-start-quiz>
+                            <span>Начать заполнение формы</span>
+                            <span aria-hidden="true">›</span>
+                        </button>
+                    </div>
+                    <div class="quiz-intro-visual" aria-hidden="true">
+                        <div class="quiz-intro-orb quiz-intro-orb-main"></div>
+                        <div class="quiz-intro-orb quiz-intro-orb-secondary"></div>
+                        <div class="quiz-intro-card">
+                            <div class="quiz-intro-card-badge">Interior Form</div>
+                            <div class="quiz-intro-card-title">Подберем интерьер под ваш сценарий жизни</div>
+                            <div class="quiz-intro-card-grid">
+                                <span>Планировка</span>
+                                <span>Стиль</span>
+                                <span>Бюджет</span>
+                                <span>Зоны</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
         if (step === 1) {
             return `
                 <div class="quiz-step-header">
@@ -633,9 +738,9 @@
         const theme = styleThemes[item.label] || styleThemes["Пока не определился"];
         return `
             <button type="button" class="quiz-style-card ${selected ? "is-selected" : ""}" data-style="${escapeHtml(item.value)}">
+                ${selected ? `<span class="quiz-option-check quiz-style-check">${icon("check")}</span>` : ""}
                 <div class="quiz-style-preview" style="background:${escapeHtml(theme.gradient)}">
                     <span>${escapeHtml(theme.title)}</span>
-                    ${selected ? `<span class="quiz-option-check">${icon("check")}</span>` : ""}
                 </div>
                 <div class="quiz-style-copy">
                     <h3>${escapeHtml(item.label)}</h3>
@@ -668,12 +773,15 @@
     }
 
     function resetQuiz() {
-        state = { ...defaultState };
+        state = {
+            ...defaultState,
+            step: 1,
+            intro_seen: true,
+        };
         fieldErrors = {};
         isSubmitting = false;
         persistState();
         render("forward");
-        trackEvent("quiz_start");
     }
 
     function trackStepView() {
