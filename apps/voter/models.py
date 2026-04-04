@@ -54,7 +54,9 @@ class ProductImage(models.Model):
 
 class BlockModel(models.Model):
     blockname = models.CharField(max_length=100, blank=True, null=True)
-    products = models.ManyToManyField(Product)
+    style = models.ManyToManyField(Style)
+    zone = models.ManyToManyField(Zone)
+    Room = models.ManyToManyField(Room)
 
     def __str__(self):
         return self.blockname
