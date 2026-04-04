@@ -37,13 +37,41 @@ ZONE_FALLBACKS = [
 ]
 
 STYLE_FALLBACKS = [
-    {"value": "Современный", "label": "Современный"},
-    {"value": "Минимализм", "label": "Минимализм"},
-    {"value": "Скандинавский", "label": "Скандинавский"},
-    {"value": "Лофт", "label": "Лофт"},
-    {"value": "Неоклассика", "label": "Неоклассика"},
-    {"value": "Классика", "label": "Классика"},
-    {"value": "Пока не определился", "label": "Пока не определился"},
+    {
+        "value": "Современный",
+        "label": "Современный",
+        "description": "Чистые линии, современные материалы и сбалансированная геометрия.",
+    },
+    {
+        "value": "Минимализм",
+        "label": "Минимализм",
+        "description": "Лаконичное пространство без визуального шума, с акцентом на воздух и свет.",
+    },
+    {
+        "value": "Скандинавский",
+        "label": "Скандинавский",
+        "description": "Светлая палитра, натуральные фактуры и ощущение уюта в каждой детали.",
+    },
+    {
+        "value": "Лофт",
+        "label": "Лофт",
+        "description": "Индустриальный характер, выразительные фактуры и открытая атмосфера.",
+    },
+    {
+        "value": "Неоклассика",
+        "label": "Неоклассика",
+        "description": "Сдержанная элегантность, симметрия и мягкие классические акценты.",
+    },
+    {
+        "value": "Классика",
+        "label": "Классика",
+        "description": "Благородные оттенки, декоративные детали и вневременная эстетика.",
+    },
+    {
+        "value": "Пока не определился",
+        "label": "Пока не определился",
+        "description": "Мы предложим несколько подходящих направлений и поможем определиться.",
+    },
 ]
 
 BUDGET_CHOICES = [
@@ -61,14 +89,37 @@ TRACKED_UTM_FIELDS = (
     "utm_term",
     "utm_content",
 )
+
+
 def _get_choice_payload(model, fallback):
     try:
         values = list(model.objects.order_by("id").values_list("name", flat=True))
     except (OperationalError, ProgrammingError):
         values = []
+
     if not values:
         return fallback
+
     return [{"value": name, "label": name} for name in values]
+
+
+def _get_style_payload():
+    try:
+        values = list(Style.objects.order_by("id").values("name", "description"))
+    except (OperationalError, ProgrammingError):
+        values = []
+
+    if not values:
+        return STYLE_FALLBACKS
+
+    return [
+        {
+            "value": item["name"],
+            "label": item["name"],
+            "description": item.get("description", ""),
+        }
+        for item in values
+    ]
 
 
 def quiz_page(request):
@@ -77,7 +128,7 @@ def quiz_page(request):
         "description": QUIZ_DESCRIPTION_FALLBACK,
         "rooms": _get_choice_payload(Room, ROOM_FALLBACKS),
         "zones": _get_choice_payload(Zone, ZONE_FALLBACKS),
-        "styles": _get_choice_payload(Style, STYLE_FALLBACKS),
+        "styles": _get_style_payload(),
         "budgets": BUDGET_CHOICES,
         "area": {"min": 20, "max": 300, "step": 5, "default": 60},
         "success_message": "Спасибо! Ваша заявка отправлена. Мы свяжемся с вами в ближайшее время.",
@@ -112,6 +163,7 @@ def api_submit_quiz(request):
             errors["phone"] = "Укажите телефон."
         elif len(digits) < 11:
             errors["phone"] = "Введите корректный номер телефона."
+
         if not consent:
             errors["privacy_agreed"] = "Нужно согласиться на обработку персональных данных."
 

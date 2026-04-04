@@ -736,6 +736,7 @@
     function renderStyleCard(item) {
         const selected = state.style === item.value;
         const theme = styleThemes[item.label] || styleThemes["Пока не определился"];
+        const hoverDescription = item.description || theme.description;
         return `
             <button type="button" class="quiz-style-card ${selected ? "is-selected" : ""}" data-style="${escapeHtml(item.value)}">
                 ${selected ? `<span class="quiz-option-check quiz-style-check">${icon("check")}</span>` : ""}
@@ -745,6 +746,9 @@
                 <div class="quiz-style-copy">
                     <h3>${escapeHtml(item.label)}</h3>
                     <p>${escapeHtml(theme.description)}</p>
+                </div>
+                <div class="quiz-style-tooltip" role="tooltip">
+                    ${escapeHtml(hoverDescription)}
                 </div>
             </button>
         `;
