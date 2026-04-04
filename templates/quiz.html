@@ -6,56 +6,74 @@
     <title>Умный квиз-конструктор</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-
     <style>
-        /* Анимация переходов (Fade/Slide) */
         .fade-enter-active, .fade-leave-active {
             transition: all 0.3s ease;
         }
-        .fade-enter-from { opacity: 0; transform: translateX(20px); }
-        .fade-leave-to { opacity: 0; transform: translateX(-20px); }
 
-        /* Ползунок */
-        input[type=range] { accent-color: #3b82f6; }
+        .fade-enter-from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .fade-leave-to {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        input[type=range] {
+            accent-color: #3b82f6;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased h-screen flex items-center justify-center p-4">
+<body class="bg-gray-50 text-gray-800 antialiased min-h-screen flex items-center justify-center p-4">
 {% verbatim %}
-<div id="app" class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[500px]">
-
+<div id="app" class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[560px]">
     <div v-if="loading" class="flex-1 flex items-center justify-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
 
     <template v-else>
-        <div class="bg-gray-100 p-6 border-b">
+        <div v-if="showStepper" class="bg-gray-100 p-6 border-b">
             <div class="flex justify-between text-sm font-medium text-gray-500 mb-2">
                 <span>Шаг {{ currentStep + 1 }} из {{ totalSteps }}</span>
                 <span>{{ progressPercentage }}%</span>
             </div>
             <div class="w-full bg-gray-300 rounded-full h-2">
-                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
-                     :style="{ width: progressPercentage + '%' }"></div>
+                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out" :style="{ width: progressPercentage + '%' }"></div>
             </div>
         </div>
 
         <div class="p-6 flex-1 relative overflow-hidden">
             <transition name="fade" mode="out-in">
+                <div v-if="isIntroStep" key="step-intro" class="h-full flex flex-col justify-center">
+                    <div class="max-w-2xl">
+                        <span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 mb-4">
+                            Добро пожаловать
+                        </span>
+                        <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ quizMeta.name }}</h1>
+                        <p class="text-base leading-7 text-gray-600 whitespace-pre-line">{{ quizMeta.description }}</p>
+                    </div>
+                </div>
 
-                <div v-if="currentStep < blocks.length" :key="'block-'+currentStep" class="w-full">
+                <div v-else-if="currentStep < blocks.length" :key="'block-' + currentStep" class="w-full">
                     <h2 class="text-2xl font-bold mb-6">Выберите элементы (Блок {{ currentStep + 1 }})</h2>
-                    <p class="text-gray-500 mb-4 text-sm">Можно выбрать несколько вариантов (множественный выбор)</p>
+                    <p class="text-gray-500 mb-4 text-sm">Можно выбрать несколько вариантов</p>
 
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <label v-for="product in blocks[currentStep].products" :key="product.id"
-                               class="cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center text-center transition-all"
-                               :class="isSelected(product.id) ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'">
-                            <input type="checkbox" :value="product.id" v-model="formData.selected_products" class="hidden">
+                        <button
+                            v-for="product in blocks[currentStep].products"
+                            :key="product.id"
+                            type="button"
+                            @click="toggleProduct(product.id)"
+                            class="border-2 rounded-xl p-4 flex flex-col items-center text-center transition-all cursor-pointer"
+                            :class="isSelected(product.id) ? 'border-blue-600 bg-blue-50 shadow-sm' : 'border-gray-200 hover:border-blue-300'"
+                        >
                             <img v-if="product.image" :src="product.image" alt="" class="w-20 h-20 object-cover rounded-md mb-2">
                             <div v-else class="w-20 h-20 bg-gray-200 rounded-md mb-2 flex items-center justify-center text-xs text-gray-400">Нет фото</div>
                             <span class="font-medium text-sm">{{ product.name }}</span>
                             <span class="text-blue-600 font-bold mt-1">{{ product.price }} ₽</span>
-                        </label>
+                        </button>
                     </div>
                 </div>
 
@@ -63,9 +81,17 @@
                     <h2 class="text-2xl font-bold mb-6">Укажите площадь помещения</h2>
                     <div class="mt-10 px-4">
                         <div class="flex justify-between text-lg font-bold text-blue-600 mb-4">
-                            <span>{{ formData.area }} м²</span>
+                            <span>{{ formData.area !== null ? formData.area + ' м²' : 'Не выбрано' }}</span>
                         </div>
-                        <input type="range" v-model="formData.area" min="10" max="200" step="1" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <input
+                            :value="formData.area ?? 10"
+                            @input="formData.area = Number($event.target.value)"
+                            type="range"
+                            min="10"
+                            max="200"
+                            step="1"
+                            class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        >
                         <div class="flex justify-between text-xs text-gray-400 mt-2">
                             <span>10 м²</span>
                             <span>200 м²</span>
@@ -79,19 +105,19 @@
                     <div class="space-y-4 max-w-md">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Имя *</label>
-                            <input type="text" v-model="formData.name" placeholder="Иван" class="mt-1 block w-full rounded-md border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input v-model="formData.name" type="text" placeholder="Иван" class="mt-1 block w-full rounded-md border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Телефон *</label>
-                            <input type="tel" v-model="formData.phone" placeholder="+7 (900) 000-00-00" class="mt-1 block w-full rounded-md border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input v-model="formData.phone" type="tel" placeholder="+7 (900) 000-00-00" class="mt-1 block w-full rounded-md border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
                             <span v-if="phoneError" class="text-red-500 text-xs mt-1">Введите корректный номер телефона</span>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Email</label>
-                            <input type="email" v-model="formData.email" placeholder="example@mail.ru" class="mt-1 block w-full rounded-md border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input v-model="formData.email" type="email" placeholder="example@mail.ru" class="mt-1 block w-full rounded-md border-gray-300 border p-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         <div class="flex items-start mt-4">
-                            <input id="consent" type="checkbox" v-model="formData.consent" class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                            <input id="consent" v-model="formData.consent" type="checkbox" class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded">
                             <label for="consent" class="ml-2 block text-sm text-gray-600">
                                 Я согласен на <a href="#" class="text-blue-600 underline">обработку персональных данных</a> *
                             </label>
@@ -101,7 +127,9 @@
 
                 <div v-else key="step-success" class="w-full h-full flex flex-col items-center justify-center text-center">
                     <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
                     </div>
                     <h2 class="text-2xl font-bold mb-2">Заявка успешно отправлена!</h2>
                     <p class="text-gray-600">Мы получили ваши данные. Итоговая сумма по выбранным материалам: <b>{{ totalSum }} ₽</b>.</p>
@@ -110,18 +138,39 @@
         </div>
 
         <div v-if="!successMessage" class="bg-gray-50 p-6 border-t flex justify-between">
-            <button @click="prevStep" :disabled="currentStep === 0 || isSubmitting"
-                    class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors">
+            <button
+                v-if="showStepper"
+                @click="prevStep"
+                :disabled="currentStep === 0 || isSubmitting"
+                class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            >
                 Назад
             </button>
+            <div v-else></div>
 
-            <button v-if="currentStep < totalSteps - 1" @click="nextStep" :disabled="!isStepValid"
-                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            <button
+                v-if="isIntroStep"
+                @click="startQuiz"
+                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+                Начать подбор интерьера
+            </button>
+
+            <button
+                v-else-if="currentStep < totalSteps - 1"
+                @click="nextStep"
+                :disabled="!isStepValid"
+                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
                 Далее
             </button>
 
-            <button v-else @click="submitQuiz" :disabled="!isFormValid || isSubmitting"
-                    class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center">
+            <button
+                v-else
+                @click="submitQuiz"
+                :disabled="!isFormValid || isSubmitting"
+                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center"
+            >
                 <span v-if="isSubmitting" class="animate-spin h-4 w-4 mr-2 border-b-2 border-white rounded-full"></span>
                 Отправить
             </button>
@@ -129,9 +178,12 @@
     </template>
 </div>
 {% endverbatim %}
+
 <script>
     const csrfToken = "{{ csrf_token }}";
 </script>
+{{ quiz_name|json_script:"quiz-name" }}
+{{ quiz_description|json_script:"quiz-description" }}
 
 <script>
 const { createApp, ref, computed, onMounted } = Vue;
@@ -143,23 +195,28 @@ createApp({
         const successMessage = ref(false);
         const totalSum = ref(0);
 
-        const currentStep = ref(0);
+        const introStep = -1;
+        const currentStep = ref(introStep);
         const blocks = ref([]);
+        const quizMeta = ref({
+            name: JSON.parse(document.getElementById('quiz-name').textContent),
+            description: JSON.parse(document.getElementById('quiz-description').textContent),
+        });
+        const selectedProductsByBlock = ref({});
 
-        // Модель данных (соответствует требованиям JSON)
         const formData = ref({
-            room_type: "Квартира", // Можно сделать отдельным шагом
-            zones: ["Кухня", "Гостиная", "Спальня"],
-            style: "Минимализм",
-            budget: "1 000 000 - 2 000 000 ₽",
-            area: 85,
+            room_type: "",
+            zones: [],
+            style: "",
+            budget: "",
+            area: null,
             name: "",
             phone: "",
             email: "",
             comment: "",
             page_url: window.location.href,
             utm_source: new URLSearchParams(window.location.search).get('utm_source') || "",
-            selected_products: [], // Массив ID выбранных продуктов
+            selected_products: [],
             consent: false
         });
 
@@ -179,54 +236,141 @@ createApp({
             fetchBlocks();
         });
 
-        // Всего шагов: N блоков + 1 шаг (площадь) + 1 шаг (форма)
         const totalSteps = computed(() => blocks.value.length + 2);
+        const isIntroStep = computed(() => currentStep.value === introStep);
+        const showStepper = computed(() => !isIntroStep.value);
 
         const progressPercentage = computed(() => {
+            if (totalSteps.value <= 1 || currentStep.value < 0) {
+                return 0;
+            }
+
             return Math.round((currentStep.value / (totalSteps.value - 1)) * 100);
         });
 
-        const isSelected = (id) => formData.value.selected_products.includes(id);
+        const normalizeId = (id) => Number(id);
+
+        const getCurrentBlockKey = () => {
+            if (currentStep.value < 0 || currentStep.value >= blocks.value.length) {
+                return null;
+            }
+
+            return String(blocks.value[currentStep.value].id);
+        };
+
+        const syncSelectedProducts = () => {
+            const uniqueProductIds = new Set();
+
+            Object.values(selectedProductsByBlock.value).forEach((productIds) => {
+                productIds.forEach((productId) => uniqueProductIds.add(productId));
+            });
+
+            formData.value.selected_products = Array.from(uniqueProductIds);
+        };
+
+        const isSelected = (id) => {
+            const blockKey = getCurrentBlockKey();
+
+            if (!blockKey) {
+                return false;
+            }
+
+            return (selectedProductsByBlock.value[blockKey] || []).includes(normalizeId(id));
+        };
+
+        const toggleProduct = (id) => {
+            const blockKey = getCurrentBlockKey();
+
+            if (!blockKey) {
+                return;
+            }
+
+            const normalizedId = normalizeId(id);
+            const blockSelections = selectedProductsByBlock.value[blockKey]
+                ? [...selectedProductsByBlock.value[blockKey]]
+                : [];
+            const existingIndex = blockSelections.indexOf(normalizedId);
+
+            if (existingIndex >= 0) {
+                blockSelections.splice(existingIndex, 1);
+            } else {
+                blockSelections.push(normalizedId);
+            }
+
+            selectedProductsByBlock.value[blockKey] = blockSelections;
+            syncSelectedProducts();
+        };
 
         const phoneError = computed(() => {
-            if (!formData.value.phone) return false;
-            // Простая валидация телефона
+            if (!formData.value.phone) {
+                return false;
+            }
+
             const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/im;
             return !phoneRegex.test(formData.value.phone);
         });
 
-        // Валидация текущего шага
         const isStepValid = computed(() => {
-            if (currentStep.value < blocks.value.length) {
-                // Если нужно сделать выбор обязательным — раскомментируйте логику ниже:
-                // const currentBlockProducts = blocks.value[currentStep.value].products.map(p => p.id);
-                // return formData.value.selected_products.some(id => currentBlockProducts.includes(id));
-                return true; // Пока разрешаем пропускать
+            if (currentStep.value === blocks.value.length) {
+                return formData.value.area !== null;
             }
+
             return true;
         });
 
-        // Валидация финальной формы
         const isFormValid = computed(() => {
             return formData.value.name.length > 1 &&
-                   formData.value.phone.length > 5 &&
-                   !phoneError.value &&
-                   formData.value.consent;
+                formData.value.phone.length > 5 &&
+                !phoneError.value &&
+                formData.value.consent;
         });
 
-        const nextStep = () => { if (isStepValid.value) currentStep.value++; };
-        const prevStep = () => { if (currentStep.value > 0) currentStep.value--; };
+        const startQuiz = () => {
+            currentStep.value = 0;
+        };
+
+        const nextStep = () => {
+            if (isStepValid.value) {
+                currentStep.value += 1;
+            }
+        };
+
+        const prevStep = () => {
+            if (currentStep.value > 0) {
+                currentStep.value -= 1;
+                return;
+            }
+
+            if (currentStep.value === 0) {
+                currentStep.value = introStep;
+            }
+        };
 
         const submitQuiz = async () => {
             isSubmitting.value = true;
             try {
+                const payload = {
+                    room_type: formData.value.room_type,
+                    zones: formData.value.zones,
+                    area: formData.value.area,
+                    style: formData.value.style,
+                    budget: formData.value.budget,
+                    name: formData.value.name,
+                    phone: formData.value.phone,
+                    email: formData.value.email,
+                    comment: formData.value.comment,
+                    page_url: formData.value.page_url,
+                    utm_source: formData.value.utm_source
+                };
+
                 const response = await fetch('/api/quiz/submit/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
+                        'X-CSRFToken': csrfToken,
+                        'X-Selected-Products': JSON.stringify(formData.value.selected_products)
                     },
-                    body: JSON.stringify(formData.value)
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
@@ -245,10 +389,27 @@ createApp({
         };
 
         return {
-            loading, isSubmitting, successMessage, totalSum,
-            currentStep, totalSteps, blocks, formData, progressPercentage,
-            nextStep, prevStep, submitQuiz, isSelected,
-            isStepValid, isFormValid, phoneError
+            loading,
+            isSubmitting,
+            successMessage,
+            totalSum,
+            currentStep,
+            totalSteps,
+            blocks,
+            quizMeta,
+            formData,
+            progressPercentage,
+            isIntroStep,
+            showStepper,
+            startQuiz,
+            nextStep,
+            prevStep,
+            submitQuiz,
+            isSelected,
+            toggleProduct,
+            isStepValid,
+            isFormValid,
+            phoneError
         };
     }
 }).mount('#app');
