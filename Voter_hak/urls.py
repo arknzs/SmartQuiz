@@ -22,7 +22,7 @@ from apps.voter import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('quiz/', views.quiz_page, name='quiz_page'),
+    path('', views.quiz_page, name='quiz_page'),
     path('api/quiz/blocks/', views.api_get_blocks, name='api_get_blocks'),
     path('api/quiz/submit/', views.api_submit_quiz, name='api_submit_quiz'),
 ]
