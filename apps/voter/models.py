@@ -9,6 +9,7 @@ except ModuleNotFoundError:
 class Style(models.Model):
     name = models.CharField(max_length=100)
     style_kf = models.FloatField(default=0)
+    description = models.TextField(blank=True)
 
     def __str__(self):
         return self.name
