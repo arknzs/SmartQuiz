@@ -10,7 +10,7 @@ class Style(models.Model):
         return self.name
 
 class Room(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=101)
 
     def __str__(self):
         return self.name
