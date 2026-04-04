@@ -1,6 +1,17 @@
 from django.contrib import admin
 
-from apps.voter.models import Voter, ProductImage, Product, BlockModel, Style, Room, Zone
+from apps.voter.models import Voter, ProductImage, Product, BlockModel, Style, Room, Zone, StylePictures
+
+
+class StyleImageInline(admin.TabularInline):
+    model = StylePictures
+
+
+@admin.register(Style)
+class StyleAdmin(admin.ModelAdmin):
+    inlines = [StyleImageInline]
+    list_display = ('name',)
+
 
 
 class ProductImageInline(admin.TabularInline):
@@ -16,7 +27,6 @@ class ProductModelAdmin(admin.ModelAdmin):
 
 
 admin.site.register(BlockModel)
-admin.site.register(Style)
 admin.site.register(Room)
 admin.site.register(Zone)
 

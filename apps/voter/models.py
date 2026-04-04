@@ -14,6 +14,12 @@ class Style(models.Model):
     def __str__(self):
         return self.name
 
+
+class StylePictures(models.Model):
+    style = models.ForeignKey(Style, on_delete=models.CASCADE)
+    image = ThumbnailerImageField(upload_to='style_pictures')
+
+
 class Room(models.Model):
     name = models.CharField(max_length=101)
     base_price = models.IntegerField(default=0)
