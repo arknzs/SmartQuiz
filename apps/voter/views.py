@@ -1,6 +1,6 @@
 import json
 import re
-
+import requests # <--- Добавить импорт
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -151,6 +151,16 @@ def api_submit_quiz(request):
             answer=payload,
         )
 
+        BOT_WEBHOOK_URL = "http://127.0.0.1:8080/new-quiz-webhook"
+
+        try:
+            # Отправляем собранный payload в виде JSON
+            requests.post(BOT_WEBHOOK_URL, json=payload, timeout=3)
+        except requests.exceptions.RequestException as e:
+            # Логируем ошибку, но не прерываем ответ пользователю (заявка в БД уже сохранена)
+            print(f"Ошибка отправки вебхука в бота: {e}")
+        # ====================================================
+
         return JsonResponse(
             {
                 "status": "success",
@@ -160,3 +170,5 @@ def api_submit_quiz(request):
         )
     except Exception as error:
         return JsonResponse({"status": "error", "message": str(error)}, status=400)
+
+
