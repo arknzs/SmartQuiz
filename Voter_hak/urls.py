@@ -24,12 +24,12 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.quiz_page, name='quiz_page'),
     path('api/quiz/blocks/', views.api_get_blocks, name='api_get_blocks'),
-    path('api/quiz/support/', views.api_support_chat, name='api_support_chat'),
     path('api/quiz/submit/', views.api_submit_quiz, name='api_submit_quiz'),
+
 ]
-if settings.DEBUG:
-    from django.conf.urls.static import static
-    urlpatterns += static(
-        settings.MEDIA_URL,
-        document_root=settings.MEDIA_ROOT
-    )
+
+from django.conf.urls.static import static
+urlpatterns += static(
+    settings.MEDIA_URL,
+    document_root=settings.MEDIA_ROOT
+)
