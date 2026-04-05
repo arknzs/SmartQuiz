@@ -9,10 +9,7 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-<<<<<<< HEAD
 
-=======
->>>>>>> cbfa8d6277d588329217febe10d0ce60a7b545c3
 import os
 from pathlib import Path
 
@@ -141,10 +138,9 @@ STATICFILES_DIRS = [
     BASE_DIR/'static'
 ]
 STATIC_ROOT = DATA_DIR/'static'
-<<<<<<< HEAD
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_SUPPORT_MODEL = os.getenv("GEMINI_SUPPORT_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
-=======
+
 GEMINI_API_KEY= os.getenv('GEMINI_API_KEY')
->>>>>>> cbfa8d6277d588329217febe10d0ce60a7b545c3
+
