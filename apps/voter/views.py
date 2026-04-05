@@ -1,6 +1,7 @@
 import json
+import logging
 import re
-import requests # <--- Добавить импорт
+import requests
 from django.conf import settings
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import JsonResponse
@@ -346,7 +347,13 @@ def api_get_blocks(request):
 @require_http_methods(["POST"])
 def api_support_chat(request):
     try:
-        data = json.loads(request.body or "{}")
+        try:
+            data = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"status": "error", "message": "Некорректный формат запроса в техподдержку."},
+                status=400,
+            )
         message = str(data.get("message", "")).strip()
         history = data.get("history", [])
         quiz_state = data.get("quiz_state", {})
@@ -357,7 +364,10 @@ def api_support_chat(request):
                 status=400,
             )
 
-        if not settings.GEMINI_API_KEY:
+        gemini_api_key = getattr(settings, "GEMINI_API_KEY", "").strip()
+        gemini_model = getattr(settings, "GEMINI_SUPPORT_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+
+        if not gemini_api_key:
             return JsonResponse(
                 {
                     "status": "error",
@@ -386,17 +396,19 @@ def api_support_chat(request):
             {"role": "user", "parts": [{"text": message[:4000]}]},
         ]
 
-        response = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_SUPPORT_MODEL}:generateContent",
-            headers={
-                "x-goog-api-key": settings.GEMINI_API_KEY,
-                "Content-Type": "application/json",
-            },
-            json={
-                "contents": prompt_messages,
-            },
-            timeout=30,
-        )
+        with requests.Session() as session:
+            session.trust_env = False
+            response = session.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent",
+                headers={
+                    "x-goog-api-key": gemini_api_key,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "contents": prompt_messages,
+                },
+                timeout=30,
+            )
         response.raise_for_status()
         response_payload = response.json()
         answer = _extract_response_text(response_payload)
@@ -405,13 +417,23 @@ def api_support_chat(request):
             answer = "Сейчас не удалось получить ответ от AI-поддержки. Попробуйте переформулировать вопрос."
 
         return JsonResponse({"status": "success", "message": answer})
-    except requests.exceptions.RequestException:
+    except requests.exceptions.RequestException as error:
+        logging.exception("Gemini support request failed: %s", error)
         return JsonResponse(
             {
                 "status": "error",
                 "message": "AI-поддержка сейчас недоступна. Попробуйте ещё раз чуть позже.",
             },
             status=502,
+        )
+    except Exception as error:
+        logging.exception("Unexpected support chat error: %s", error)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": "Техподдержка временно недоступна. Попробуйте обновить страницу и отправить вопрос ещё раз.",
+            },
+            status=500,
         )
 
 

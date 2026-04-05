@@ -364,6 +364,20 @@
         renderSupportMessages();
     }
 
+    async function readJsonResponse(response) {
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+            return response.json();
+        }
+
+        const text = await response.text();
+        const cleanText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+        throw {
+            message: cleanText || "Сервис временно вернул некорректный ответ. Попробуйте ещё раз.",
+            raw: text,
+        };
+    }
+
     async function sendSupportMessage(rawMessage) {
         const message = rawMessage.trim();
         if (!message || supportSubmitting || !supportUrl) {
@@ -388,7 +402,7 @@
                 },
                 body: JSON.stringify(requestPayload),
             });
-            const result = await response.json();
+            const result = await readJsonResponse(response);
 
             if (!response.ok || result.status !== "success") {
                 throw result;
@@ -784,7 +798,7 @@
                 },
                 body: JSON.stringify(payload),
             });
-            const result = await response.json();
+            const result = await readJsonResponse(response);
 
             if (!response.ok || result.status !== "success") {
                 throw result;
