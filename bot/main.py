@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_TOKEN = os.getenv('BOT_TOKEN')
-ADMIN_CHAT_ID = '1420530867'  # Куда бот должен присылать заявки
+ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID')  # Куда бот должен присылать заявки
 
 # Инициализация бота с дефолтным парсингом HTML (новшество aiogram 3)
 bot = Bot(

@@ -4,7 +4,6 @@ from django.db import models
 from easy_thumbnails.fields import ThumbnailerImageField
 
 
-
 class Style(models.Model):
     name = models.CharField(max_length=100)
     style_kf = models.FloatField(default=0)
