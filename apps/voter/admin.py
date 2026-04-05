@@ -2,7 +2,18 @@ from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 
-from apps.voter.models import Voter, ProductImage, Product, BlockModel, Style, Room, Zone, StylePictures, BotSettings
+from apps.voter.models import (
+    BlockModel,
+    BotSettings,
+    Product,
+    ProductImage,
+    Room,
+    Style,
+    StylePictures,
+    TelegramRecipient,
+    Voter,
+    Zone,
+)
 
 
 class StyleImageInline(admin.TabularInline):
@@ -12,8 +23,7 @@ class StyleImageInline(admin.TabularInline):
 @admin.register(Style)
 class StyleAdmin(admin.ModelAdmin):
     inlines = [StyleImageInline]
-    list_display = ('name',)
-
+    list_display = ("name",)
 
 
 class ProductImageInline(admin.TabularInline):
@@ -25,7 +35,15 @@ class ProductImageInline(admin.TabularInline):
 class ProductModelAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline]
     list_display = ("name", "price_at_square", "zone", "room_type")
-    search_fields = ("name", "zone", "room_type")
+    search_fields = ("name", "zone__name", "room_type__name")
+
+
+@admin.register(TelegramRecipient)
+class TelegramRecipientAdmin(admin.ModelAdmin):
+    list_display = ("chat_id", "username", "first_name", "last_name", "is_active", "last_seen")
+    list_filter = ("is_active",)
+    search_fields = ("=chat_id", "username", "first_name", "last_name")
+    ordering = ("-last_seen",)
 
 
 admin.site.register(BlockModel)
@@ -36,8 +54,18 @@ admin.site.register(Zone)
 @admin.register(BotSettings)
 class BotSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
-        (None, {"fields": ("admin_chat_id",)}),
+        (
+            None,
+            {
+                "fields": ("recipient", "admin_chat_id"),
+                "description": (
+                    "Сначала выберите пользователя из списка Telegram-получателей. "
+                    "Поле chat id ниже работает как запасной вариант."
+                ),
+            },
+        ),
     )
+    autocomplete_fields = ("recipient",)
 
     def has_add_permission(self, request):
         if BotSettings.objects.exists():

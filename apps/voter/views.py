@@ -481,7 +481,7 @@ def api_submit_quiz(request):
 
         try:
             # Отправляем собранный payload в виде JSON
-            requests.post(BOT_WEBHOOK_URL, json=payload, timeout=3)
+            requests.post(BOT_WEBHOOK_URL, json=payload, timeout=10)
         except requests.exceptions.RequestException as e:
             # Логируем ошибку, но не прерываем ответ пользователю (заявка в БД уже сохранена)
             print(f"Ошибка отправки вебхука в бота: {e}")
