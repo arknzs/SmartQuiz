@@ -74,6 +74,7 @@ uv sync
 
 ```bash
 pip install uv
+uv lock
 uv sync
 ```
 
@@ -89,7 +90,6 @@ DEBUG=True
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_SUPPORT_MODEL=gemini-2.5-flash
 BOT_TOKEN=your_telegram_bot_token
-ADMIN_CHAT_ID=
 ```
 
 ### 3. Миграции
@@ -116,6 +116,9 @@ http://127.0.0.1:8000/
 
 ```bash
 python bot/main.py
+
+
+Настройка куда отправлять данные о новых пользователях прошедших форму находятся в админ панели
 ```
 
 ### 6. Создание администратора
