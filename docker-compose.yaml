@@ -33,6 +33,7 @@ services:
       STATIC_ROOT: /data/static
       MEDIA_ROOT: /data/media
       SKIP_DJANGO_BOOTSTRAP: "1"
+      PYTHONPATH: /app
     command: ["python", "bot/main.py"]
     volumes:
       - ./data:/data
