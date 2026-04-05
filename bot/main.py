@@ -1,6 +1,8 @@
 import logging
 import asyncio
 import os
+import sys
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -9,10 +11,24 @@ from aiogram.enums import ParseMode
 from aiohttp import web
 from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.append(str(BASE_DIR))
+
 load_dotenv()
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Voter_hak.settings")
+
+try:
+    import django
+
+    django.setup()
+    from apps.voter.models import BotSettings
+except Exception as exc:
+    BotSettings = None
+    logging.warning("Не удалось подключить Django-модель настроек бота: %s", exc)
 
 API_TOKEN = os.getenv('BOT_TOKEN')
-ADMIN_CHAT_ID = ""  # Куда бот должен присылать заявки
+ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', "").strip()
 
 # Инициализация бота с дефолтным парсингом HTML (новшество aiogram 3)
 bot = Bot(
@@ -20,6 +36,21 @@ bot = Bot(
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 dp = Dispatcher()
+
+
+def get_admin_chat_id():
+    if BotSettings is not None:
+        try:
+            chat_id = str(BotSettings.load().admin_chat_id).strip()
+            if chat_id:
+                return int(chat_id) if chat_id.lstrip("-").isdigit() else chat_id
+        except Exception as exc:
+            logging.error("Не удалось получить ADMIN_CHAT_ID из админки Django: %s", exc)
+
+    if ADMIN_CHAT_ID:
+        return int(ADMIN_CHAT_ID) if ADMIN_CHAT_ID.lstrip("-").isdigit() else ADMIN_CHAT_ID
+
+    return ""
 
 
 # --- ОБРАБОТЧИК КОМАНДЫ START В AIOGRAM 3 ---
@@ -52,9 +83,13 @@ async def handle_django_webhook(request: web.Request):
             f"🔗 <b>Источник (URL):</b> {data.get('page_url', 'Не указано')}"
         )
 
+        chat_id = get_admin_chat_id()
+        if not chat_id:
+            raise ValueError("ADMIN_CHAT_ID не настроен ни в Django admin, ни в .env")
+
         # 3. Отправляем сообщение администратору через бота
         await bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
+            chat_id=chat_id,
             text=text
         )
 

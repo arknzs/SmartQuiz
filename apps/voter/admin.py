@@ -1,6 +1,8 @@
 from django.contrib import admin
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 
-from apps.voter.models import Voter, ProductImage, Product, BlockModel, Style, Room, Zone, StylePictures
+from apps.voter.models import Voter, ProductImage, Product, BlockModel, Style, Room, Zone, StylePictures, BotSettings
 
 
 class StyleImageInline(admin.TabularInline):
@@ -29,6 +31,26 @@ class ProductModelAdmin(admin.ModelAdmin):
 admin.site.register(BlockModel)
 admin.site.register(Room)
 admin.site.register(Zone)
+
+
+@admin.register(BotSettings)
+class BotSettingsAdmin(admin.ModelAdmin):
+    fieldsets = (
+        (None, {"fields": ("admin_chat_id",)}),
+    )
+
+    def has_add_permission(self, request):
+        if BotSettings.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        settings_obj = BotSettings.load()
+        url = reverse("admin:voter_botsettings_change", args=[settings_obj.pk])
+        return HttpResponseRedirect(url)
 
 
 @admin.register(Voter)

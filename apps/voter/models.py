@@ -36,6 +36,27 @@ class Zone(models.Model):
         return self.name
 
 
+class BotSettings(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    admin_chat_id = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        verbose_name = "Настройки бота"
+        verbose_name_plural = "Настройки бота"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Настройки Telegram бота"
+
+
 class Voter(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255, blank=True, default="")
