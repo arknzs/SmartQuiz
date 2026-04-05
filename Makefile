@@ -1,31 +1,39 @@
-include ./.env
+DC=docker compose
 
-default:
-	make build
-	make up
-	make initdb
-	make mkuser
-
-initdb:
-	docker exec ${APP_NAME}-app ./manage.py migrate
-
-makem:
-	docker exec ${APP_NAME}-app ./manage.py makemigrations
-
-mkuser:
-	docker exec -it ${APP_NAME}-app ./manage.py createsuperuser
-
-static:
-	docker exec ${APP_NAME}-app ./manage.py collectstatic --noinput
+.PHONY: build up down restart logs ps deploy migrate collectstatic createsuperuser shell-web shell-bot
 
 build:
-	docker compose build
+	$(DC) build
 
 up:
-	docker compose up -d
+	$(DC) up -d
 
-update:
-	git fetch --all
-	git reset --hard origin/master
-	docker compose build app
-	docker compose up -d
+down:
+	$(DC) down
+
+restart:
+	$(DC) restart
+
+logs:
+	$(DC) logs -f --tail=200 web bot nginx
+
+ps:
+	$(DC) ps
+
+deploy:
+	sh ./deploy.sh
+
+migrate:
+	$(DC) exec web python manage.py migrate --noinput
+
+collectstatic:
+	$(DC) exec web python manage.py collectstatic --noinput
+
+createsuperuser:
+	$(DC) exec web python manage.py createsuperuser
+
+shell-web:
+	$(DC) exec web sh
+
+shell-bot:
+	$(DC) exec bot sh
