@@ -56,7 +56,7 @@ def get_admin_chat_id():
 # --- ОБРАБОТЧИК КОМАНДЫ START В AIOGRAM 3 ---
 @dp.message(Command('start'))
 async def send_welcome(message: types.Message):
-    await message.answer(f"Привет! Я бот для приема заявок с сайта.")
+    await message.answer(f"Привет! Я бот для приема заявок с сайта. Наш чат id: {message.chat.id}")
 
 
 
