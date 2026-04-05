@@ -1,9 +1,8 @@
 from django.db import models
 
-try:
-    from easy_thumbnails.fields import ThumbnailerImageField
-except ModuleNotFoundError:
-    ThumbnailerImageField = models.FileField
+
+from easy_thumbnails.fields import ThumbnailerImageField
+
 
 
 class Style(models.Model):
