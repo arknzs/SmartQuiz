@@ -1,37 +1,56 @@
 services:
   web:
-    build: .
-    container_name: django_web
+    build:
+      context: .
     restart: unless-stopped
-    # Убедитесь, что ваш entrypoint.sh запускает gunicorn (для продакшена), а не runserver
-    environment:
-      - DJANGO_SETTINGS_MODULE=Voter_hak.settings # Укажите ваш модуль настроек
-    volumes:
-      # Сохраняем базу данных. Docker создаст её в изолированном томе
-      - sqlite_data:/app/data
-      # Тома для статики и медиа, чтобы к ним имел доступ Nginx
-      - static_volume:/app/static
-      - media_volume:/app/media
     env_file:
       - .env
-
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: nginx_proxy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      # - "443:443" # Раскомментируйте, когда добавите SSL-сертификаты
+    environment:
+      DJANGO_SETTINGS_MODULE: Voter_hak.settings
+      DEBUG: "False"
+      DATA_DIR: /data
+      SQLITE_PATH: /data/db.sqlite3
+      STATIC_ROOT: /data/static
+      MEDIA_ROOT: /data/media
+      BOT_WEBHOOK_URL: http://bot:8080/new-quiz-webhook
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://localhost}
     volumes:
-      # Прокидываем конфиг Nginx
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      # Подключаем те же тома со статикой
-      - static_volume:/app/static
-      - media_volume:/app/media
+      - app_data:/data
+    expose:
+      - "8000"
+
+  bot:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: Voter_hak.settings
+      DATA_DIR: /data
+      SQLITE_PATH: /data/db.sqlite3
+      STATIC_ROOT: /data/static
+      MEDIA_ROOT: /data/media
+      SKIP_DJANGO_BOOTSTRAP: "1"
+    command: ["python", "bot/main.py"]
+    volumes:
+      - app_data:/data
+    expose:
+      - "8080"
     depends_on:
       - web
 
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - app_data:/data:ro
+
 volumes:
-  sqlite_data:
-  static_volume:
-  media_volume:
+  app_data:

@@ -1,29 +1,23 @@
-FROM python:3.12.3
+FROM python:3.12-slim
 
-# Оставляем только нужные переменные среды
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    APP_PATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    APP_HOME=/app \
+    PATH="/app/.venv/bin:$PATH"
 
-ENV TZ=Europe/Moscow
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+WORKDIR /app
 
-# Устанавливаем uv
-#COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-RUN pip install uv
-WORKDIR $APP_PATH
+RUN pip install --no-cache-dir uv
 
-# Копируем файлы конфигурации зависимостей
-COPY pyproject.toml uv.lock $APP_PATH/
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-# Устанавливаем зависимости
-RUN uv pip install --system -r pyproject.toml
+COPY . .
 
-# Копируем ВЕСЬ код из текущей директории в контейнер (так как папки src у вас нет)
-COPY . $APP_PATH/
+RUN sed -i 's/\r$//' /app/entrypoint.sh \
+    && chmod +x /app/entrypoint.sh \
+    && mkdir -p /data/static /data/media
 
-# Делаем скрипт исполняемым
-RUN chmod +x $APP_PATH/entrypoint.sh
-
-# Запускаем скрипт
 ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["gunicorn", "Voter_hak.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]

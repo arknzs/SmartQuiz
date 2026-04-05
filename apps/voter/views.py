@@ -499,11 +499,11 @@ def api_submit_quiz(request):
             answer=payload,
         )
 
-        BOT_WEBHOOK_URL = "http://127.0.0.1:8080/new-quiz-webhook"
+        bot_webhook_url = getattr(settings, "BOT_WEBHOOK_URL", "http://127.0.0.1:8080/new-quiz-webhook").strip()
 
         try:
             # Отправляем собранный payload в виде JSON
-            requests.post(BOT_WEBHOOK_URL, json=payload, timeout=10)
+            requests.post(bot_webhook_url, json=payload, timeout=10)
         except requests.exceptions.RequestException as e:
             # Логируем ошибку, но не прерываем ответ пользователю (заявка в БД уже сохранена)
             print(f"Ошибка отправки вебхука в бота: {e}")

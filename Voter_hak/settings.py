@@ -20,16 +20,39 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
+def env_flag(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name, default=""):
+    raw = os.getenv(name, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def env_path(name, default):
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return Path(default)
+    path = Path(raw)
+    if path.is_absolute():
+        return path
+    return (BASE_DIR / path).resolve()
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$-x$k)jnp+qj#59n0l$2zut2r&h3h)==fz=5p*32d$s@fb93%d'
+SECRET_KEY = os.getenv("SECRET_KEY", 'django-insecure-$-x$k)jnp+qj#59n0l$2zut2r&h3h)==fz=5p*32d$s@fb93%d')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_flag("DEBUG", True)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "")
 
 
 # Application definition
@@ -54,7 +77,6 @@ else:
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -90,7 +112,7 @@ WSGI_APPLICATION = 'Voter_hak.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': env_path("SQLITE_PATH", BASE_DIR / 'db.sqlite3'),
     }
 }
 
@@ -128,19 +150,21 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
-DATA_DIR = (BASE_DIR/'../data').resolve()
+DATA_DIR = env_path("DATA_DIR", (BASE_DIR / "../data").resolve())
 
-STATIC_URL = 'static/'
-MEDIA_URL = 'media/'
+STATIC_URL = os.getenv("STATIC_URL", "/static/")
+MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
 
-MEDIA_ROOT = DATA_DIR/'media'
+MEDIA_ROOT = env_path("MEDIA_ROOT", DATA_DIR / 'media')
 STATICFILES_DIRS = [
     BASE_DIR/'static'
 ]
-STATIC_ROOT = DATA_DIR/'static'
+STATIC_ROOT = env_path("STATIC_ROOT", DATA_DIR / 'static')
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_SUPPORT_MODEL = os.getenv("GEMINI_SUPPORT_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+BOT_WEBHOOK_URL = os.getenv("BOT_WEBHOOK_URL", "http://127.0.0.1:8080/new-quiz-webhook").strip()
 
-GEMINI_API_KEY= os.getenv('GEMINI_API_KEY')
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 

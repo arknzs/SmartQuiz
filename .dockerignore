@@ -1,1 +1,16 @@
+.git
+.gitignore
+.venv
+quiz
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
 db.sqlite3
+data
+.env
+_design_ref
+Smart Quiz UI_UX Design.zip
