@@ -398,15 +398,6 @@ def api_support_chat(request):
             },
             status=502,
         )
-        return JsonResponse(
-            {
-                "status": "error",
-                "message": f"AI-поддержка сейчас недоступна.{e} Попробуйте ещё раз чуть позже.",
-            },
-            status=502,
-        )
-    except Exception as error:
-        return JsonResponse({"status": "error", "message": str(error)}, status=400)
 
 
 @require_http_methods(["POST"])
