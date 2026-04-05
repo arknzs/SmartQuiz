@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from .models import Room, Style, Zone, Voter
+from .models import Room, Style, StylePictures, Zone, Voter
 from .services import computed_total
 
 QUIZ_TITLE_FALLBACK = "Подберите дизайн-проект интерьера"
@@ -172,21 +172,36 @@ def _get_zone_payload():
 
 def _get_style_payload():
     try:
-        values = list(Style.objects.order_by("id").values("name", "description", "style_kf"))
+        styles = list(Style.objects.order_by("id"))
     except (OperationalError, ProgrammingError):
-        values = []
+        styles = []
 
-    if not values:
+    if not styles:
         return _enrich_fallback(STYLE_FALLBACKS, "style_kf", STYLE_KF_FALLBACKS)
+
+    try:
+        style_images = list(
+            StylePictures.objects.select_related("style").order_by("id")
+        )
+    except (OperationalError, ProgrammingError):
+        style_images = []
+
+    images_by_style_id = {}
+    for item in style_images:
+        image_url = getattr(getattr(item, "image", None), "url", "")
+        if not image_url:
+            continue
+        images_by_style_id.setdefault(item.style_id, []).append(image_url)
 
     return [
         {
-            "value": item["name"],
-            "label": item["name"],
-            "description": item.get("description", ""),
-            "style_kf": item.get("style_kf") or 0,
+            "value": item.name,
+            "label": item.name,
+            "description": item.description or "",
+            "style_kf": item.style_kf or 0,
+            "style_images": images_by_style_id.get(item.id, []),
         }
-        for item in values
+        for item in styles
     ]
 
 

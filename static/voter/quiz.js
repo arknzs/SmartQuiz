@@ -1033,10 +1033,12 @@
         const selected = state.style === item.value;
         const theme = styleThemes[item.label] || styleThemes["Пока не определился"];
         const cardDescription = item.description || theme.description;
+        const previewImage = Array.isArray(item.style_images) && item.style_images.length ? item.style_images[0] : "";
         return `
             <button type="button" class="quiz-style-card ${selected ? "is-selected" : ""}" data-style="${escapeHtml(item.value)}">
                 ${selected ? `<span class="quiz-option-check quiz-style-check">${icon("check")}</span>` : ""}
-                <div class="quiz-style-preview" style="background:${escapeHtml(theme.gradient)}">
+                <div class="quiz-style-preview ${previewImage ? "has-image" : ""}" style="${previewImage ? "" : `background:${escapeHtml(theme.gradient)}`}">
+                    ${previewImage ? `<img class="quiz-style-preview-image" src="${escapeHtml(previewImage)}" alt="${escapeHtml(item.label)}">` : ""}
                     <span>${escapeHtml(theme.title)}</span>
                 </div>
                 <div class="quiz-style-copy">
