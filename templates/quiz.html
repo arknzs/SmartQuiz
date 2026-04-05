@@ -17,6 +17,7 @@
         <section
             class="quiz-app"
             data-submit-url="{% url 'api_submit_quiz' %}"
+            data-support-url="{% url 'api_support_chat' %}"
             aria-label="Смарт-квиз по дизайн-проекту"
         >
             <header class="quiz-topbar">
@@ -54,6 +55,48 @@
                 </footer>
             </section>
         </section>
+        <div id="support-chat" class="support-chat" aria-live="polite">
+            <button id="support-chat-toggle" type="button" class="support-chat-toggle" aria-expanded="false" aria-controls="support-chat-panel">
+                <span class="support-chat-toggle-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M6 18.2V20a1 1 0 0 0 1.62.78l3.08-2.58H18a4 4 0 0 0 4-4V8a4 4 0 0 0-4-4H6A4 4 0 0 0 2 8v6.2a4 4 0 0 0 4 4Z" fill="currentColor"></path>
+                    </svg>
+                </span>
+                <span class="support-chat-toggle-label">Техподдержка</span>
+            </button>
+
+            <section id="support-chat-panel" class="support-chat-panel" hidden>
+                <header class="support-chat-header">
+                    <div>
+                        <p class="support-chat-kicker">Support</p>
+                        <h2>Техподдержка проекта</h2>
+                        <p>Спросите про цену, стили, тренды или техническую ошибку.</p>
+                    </div>
+                    <button id="support-chat-close" type="button" class="support-chat-close" aria-label="Закрыть чат">×</button>
+                </header>
+
+                <div class="support-chat-suggestions">
+                    <button type="button" class="support-chat-chip" data-support-question="От чего зависит итоговая цена моего проекта?">Цена проекта</button>
+                    <button type="button" class="support-chat-chip" data-support-question="Какие стили сейчас чаще выбирают для современного интерьера?">Популярные стили</button>
+                    <button type="button" class="support-chat-chip" data-support-question="У меня не отправляется форма, что проверить?">Ошибка формы</button>
+                </div>
+
+                <div id="support-chat-messages" class="support-chat-messages">
+                    <article class="support-chat-message is-assistant">
+                        <div class="support-chat-bubble">
+                            Я на связи. Могу помочь понять расчёт цены, подсказать по стилям или разобраться с ошибкой на сайте.
+                        </div>
+                    </article>
+                </div>
+
+                <form id="support-chat-form" class="support-chat-form">
+                    <label class="support-chat-input-wrap" for="support-chat-input">
+                        <textarea id="support-chat-input" class="support-chat-input" rows="1" placeholder="Напишите ваш вопрос..."></textarea>
+                    </label>
+                    <button id="support-chat-send" type="submit" class="support-chat-send">Отправить</button>
+                </form>
+            </section>
+        </div>
     </main>
 
     {{ quiz_config|json_script:"quiz-config" }}

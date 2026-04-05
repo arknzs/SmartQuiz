@@ -8,7 +8,9 @@
     const totalSteps = 6;
     const storageKey = "smart-quiz-state-v2";
     const storageVersion = 2;
+    const supportStorageKey = "smart-quiz-support-v1";
     const submitUrl = document.querySelector(".quiz-app")?.dataset.submitUrl || "";
+    const supportUrl = document.querySelector(".quiz-app")?.dataset.supportUrl || "";
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
 
     const elements = {
@@ -22,6 +24,14 @@
         progressValue: document.getElementById("quiz-progress-value"),
         progressFill: document.getElementById("quiz-progress-fill"),
         alert: document.getElementById("quiz-alert"),
+        supportRoot: document.getElementById("support-chat"),
+        supportToggle: document.getElementById("support-chat-toggle"),
+        supportPanel: document.getElementById("support-chat-panel"),
+        supportClose: document.getElementById("support-chat-close"),
+        supportMessages: document.getElementById("support-chat-messages"),
+        supportForm: document.getElementById("support-chat-form"),
+        supportInput: document.getElementById("support-chat-input"),
+        supportSend: document.getElementById("support-chat-send"),
     };
 
     const defaultState = {
@@ -110,11 +120,16 @@
     };
 
     let state = hydrateState();
+    let supportMessages = hydrateSupportMessages();
+    let supportOpen = false;
+    let supportSubmitting = false;
     let fieldErrors = {};
     let isSubmitting = false;
 
     elements.back.addEventListener("click", handleBack);
     elements.next.addEventListener("click", handleNext);
+    bindSupportEvents();
+    renderSupport();
 
     trackEvent("quiz_start");
     render("forward");
@@ -147,13 +162,288 @@
         );
     }
 
+    function hydrateSupportMessages() {
+        try {
+            const saved = JSON.parse(sessionStorage.getItem(supportStorageKey) || "[]");
+            if (!Array.isArray(saved)) {
+                return [];
+            }
+            return saved
+                .filter((item) => item && (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
+                .slice(-12);
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function persistSupportMessages() {
+        sessionStorage.setItem(supportStorageKey, JSON.stringify(supportMessages.slice(-12)));
+    }
+
     function clampStep(step) {
         return Math.max(0, Math.min(totalSteps + 1, Number(step) || 0));
+    }
+
+    function findConfigItem(items, value) {
+        return (items || []).find((item) => item?.value === value || item?.label === value) || null;
+    }
+
+    function getSelectedRoom() {
+        return findConfigItem(config.rooms, state.room_type);
+    }
+
+    function getSelectedStyle() {
+        return findConfigItem(config.styles, state.style);
+    }
+
+    function getSelectedZones() {
+        return state.zones
+            .map((zone) => findConfigItem(config.zones, zone))
+            .filter(Boolean);
+    }
+
+    function getZoneCoefficient() {
+        const coefficients = getSelectedZones()
+            .map((zone) => Number(zone.zone_kf || 0))
+            .filter((value) => value > 0);
+
+        if (!coefficients.length) {
+            return 0;
+        }
+
+        return coefficients.reduce((sum, value) => sum + value, 0) / coefficients.length;
+    }
+
+    function formatFactor(value) {
+        return Number(value || 0).toFixed(2);
+    }
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat("ru-RU", {
+            style: "currency",
+            currency: "RUB",
+            maximumFractionDigits: 0,
+        }).format(Math.round(Number(value || 0)));
+    }
+
+    function getEstimate() {
+        const room = getSelectedRoom();
+        const style = getSelectedStyle();
+        const area = Number(state.area || 0);
+        const basePrice = Number(room?.base_price || 0);
+        const zoneKf = getZoneCoefficient();
+        const styleKf = Number(style?.style_kf || 0);
+
+        if (area <= 0 || basePrice <= 0 || zoneKf <= 0 || styleKf <= 0) {
+            return null;
+        }
+
+        return {
+            total: Math.round(basePrice * area * zoneKf * styleKf),
+            basePrice,
+            area,
+            zoneKf,
+            styleKf,
+        };
+    }
+
+    function renderEstimateCard() {
+        const estimate = getEstimate();
+
+        if (!estimate) {
+            return `
+                <div class="quiz-summary-estimate is-muted">
+                    <span class="quiz-summary-estimate-kicker">Примерная сумма с учетом услуг</span>
+                    <strong>Рассчитаем после выбора коэффициентов</strong>
+                    <p>Когда для помещения, зон и стиля заполнены цены и коэффициенты, здесь появится итоговая ориентировочная сумма.</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="quiz-summary-estimate">
+                <span class="quiz-summary-estimate-kicker">Примерная сумма с учетом услуг</span>
+                <strong>${escapeHtml(formatCurrency(estimate.total))}</strong>
+                <p>${escapeHtml(`${formatCurrency(estimate.basePrice)} × ${estimate.area} м² × ${formatFactor(estimate.zoneKf)} × ${formatFactor(estimate.styleKf)}`)}</p>
+            </div>
+        `;
+    }
+
+    function canShowSupport() {
+        return state.step > 0 && state.step <= totalSteps && !state.success;
+    }
+
+    function buildSupportPayload(message) {
+        const estimate = getEstimate();
+        return {
+            message,
+            history: supportMessages.slice(-8),
+            quiz_state: {
+                step: state.step,
+                room_type: state.room_type,
+                zones: state.zones,
+                area: state.area,
+                style: state.style,
+                budget: state.budget,
+                estimated_price: estimate?.total || null,
+            },
+        };
+    }
+
+    function renderSupportMessages() {
+        if (!elements.supportMessages) {
+            return;
+        }
+
+        const messages = supportMessages.length
+            ? supportMessages
+            : [{
+                role: "assistant",
+                content: "Я на связи. Могу помочь понять расчёт цены, подсказать по стилям или разобраться с ошибкой на сайте.",
+            }];
+
+        elements.supportMessages.innerHTML = messages
+            .map(
+                (item) => `
+                    <article class="support-chat-message is-${item.role}">
+                        <div class="support-chat-bubble">${escapeHtml(item.content)}</div>
+                    </article>
+                `,
+            )
+            .join("");
+
+        if (supportSubmitting) {
+            elements.supportMessages.insertAdjacentHTML(
+                "beforeend",
+                `
+                    <article class="support-chat-message is-assistant is-loading">
+                        <div class="support-chat-bubble">Подбираю ответ…</div>
+                    </article>
+                `,
+            );
+        }
+
+        elements.supportMessages.scrollTop = elements.supportMessages.scrollHeight;
+    }
+
+    function renderSupport() {
+        if (!elements.supportRoot || !elements.supportPanel || !elements.supportToggle) {
+            return;
+        }
+
+        const visible = canShowSupport();
+        elements.supportRoot.classList.toggle("is-hidden", !visible);
+        if (!visible) {
+            supportOpen = false;
+        }
+
+        elements.supportPanel.hidden = !supportOpen;
+        elements.supportToggle.setAttribute("aria-expanded", String(supportOpen));
+        renderSupportMessages();
+
+        if (elements.supportSend) {
+            elements.supportSend.disabled = supportSubmitting;
+        }
+        if (elements.supportInput) {
+            elements.supportInput.disabled = supportSubmitting;
+            autoResizeSupportInput();
+        }
+    }
+
+    function autoResizeSupportInput() {
+        if (!elements.supportInput) {
+            return;
+        }
+        elements.supportInput.style.height = "auto";
+        elements.supportInput.style.height = `${Math.min(elements.supportInput.scrollHeight, 140)}px`;
+    }
+
+    function pushSupportMessage(role, content) {
+        supportMessages = [...supportMessages, { role, content }].slice(-12);
+        persistSupportMessages();
+        renderSupportMessages();
+    }
+
+    async function sendSupportMessage(rawMessage) {
+        const message = rawMessage.trim();
+        if (!message || supportSubmitting || !supportUrl) {
+            return;
+        }
+
+        const requestPayload = buildSupportPayload(message);
+        pushSupportMessage("user", message);
+        supportSubmitting = true;
+        if (elements.supportInput) {
+            elements.supportInput.value = "";
+            autoResizeSupportInput();
+        }
+        renderSupport();
+
+        try {
+            const response = await fetch(supportUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: JSON.stringify(requestPayload),
+            });
+            const result = await response.json();
+
+            if (!response.ok || result.status !== "success") {
+                throw result;
+            }
+
+            pushSupportMessage("assistant", String(result.message || "").trim());
+        } catch (error) {
+            const fallbackMessage = error?.message || "Сейчас AI-поддержка недоступна. Попробуйте ещё раз чуть позже.";
+            pushSupportMessage("assistant", fallbackMessage);
+        } finally {
+            supportSubmitting = false;
+            renderSupport();
+        }
+    }
+
+    function bindSupportEvents() {
+        elements.supportToggle?.addEventListener("click", () => {
+            if (!canShowSupport()) {
+                return;
+            }
+            supportOpen = !supportOpen;
+            renderSupport();
+        });
+
+        elements.supportClose?.addEventListener("click", () => {
+            supportOpen = false;
+            renderSupport();
+        });
+
+        elements.supportForm?.addEventListener("submit", (event) => {
+            event.preventDefault();
+            sendSupportMessage(elements.supportInput?.value || "");
+        });
+
+        elements.supportInput?.addEventListener("input", autoResizeSupportInput);
+        elements.supportInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                sendSupportMessage(elements.supportInput?.value || "");
+            }
+        });
+
+        document.querySelectorAll("[data-support-question]").forEach((button) => {
+            button.addEventListener("click", () => {
+                supportOpen = true;
+                renderSupport();
+                sendSupportMessage(button.dataset.supportQuestion || "");
+            });
+        });
     }
 
     function render(direction) {
         updateProgress();
         renderAlert();
+        renderSupport();
 
         if (state.success) {
             elements.progressPanel.classList.remove("is-hidden");
@@ -432,6 +722,12 @@
             privacyInput.addEventListener("change", (event) => {
                 updateField("privacy_agreed", event.target.checked, true);
             });
+        }
+
+        const summaryPanel = elements.stage.querySelector(".quiz-summary-panel");
+        if (summaryPanel && !summaryPanel.querySelector(".quiz-summary-estimate")) {
+            const heading = summaryPanel.querySelector("h3");
+            heading?.insertAdjacentHTML("afterend", renderEstimateCard());
         }
     }
 
