@@ -1,0 +1,37 @@
+services:
+  web:
+    build: .
+    container_name: django_web
+    restart: unless-stopped
+    # Убедитесь, что ваш entrypoint.sh запускает gunicorn (для продакшена), а не runserver
+    environment:
+      - DJANGO_SETTINGS_MODULE=Voter_hak.settings # Укажите ваш модуль настроек
+    volumes:
+      # Сохраняем базу данных. Docker создаст её в изолированном томе
+      - sqlite_data:/app/data
+      # Тома для статики и медиа, чтобы к ним имел доступ Nginx
+      - static_volume:/app/static
+      - media_volume:/app/media
+    env_file:
+      - .env
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443" # Раскомментируйте, когда добавите SSL-сертификаты
+    volumes:
+      # Прокидываем конфиг Nginx
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Подключаем те же тома со статикой
+      - static_volume:/app/static
+      - media_volume:/app/media
+    depends_on:
+      - web
+
+volumes:
+  sqlite_data:
+  static_volume:
+  media_volume:
